@@ -1,4 +1,5 @@
 const Student = require("../models/studentModel");
+const School = require("../models/schoolModel");
 const validator = require("validator");
 const bcrypt = require("bcrypt");
 const sendMail = require("../utils/email").sendMail;
@@ -31,6 +32,11 @@ exports.signUp = async (req, res) => {
             return res.status(400).json({ message: "Invalid email." });
         }
 
+        const school = await School.findOne({ schoolName: req.body.schoolName })
+        if (!school) {
+            return res.status(400).json({ message: "School doesn't exist" })
+        }
+
         const checkUsername = await Student.findOne({ userName: req.body.userName });
         if (checkUsername) {
             return res.status(409).json({ message: "userName already in use." });
@@ -50,7 +56,7 @@ exports.signUp = async (req, res) => {
                 .json({ message: "busNumber is required." });
         }
 
-        const bus = await Bus.findOne({ BusNumber: busNumber });
+        const bus = await Bus.findOne({ BusNumber: busNumber, School: school._id });
 
         if (!bus) {
             return res.status(400).json({ message: "bus does not exist." });

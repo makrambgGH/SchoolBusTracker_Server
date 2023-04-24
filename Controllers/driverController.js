@@ -1,4 +1,5 @@
 const Driver = require("../models/driverModel");
+const School = require("../models/schoolModel");
 const validator = require("validator");
 const bcrypt = require("bcrypt");
 const sendMail = require("../utils/email").sendMail;
@@ -33,6 +34,11 @@ exports.signUp = async (req, res) => {
             return res.status(400).json({ message: "Invalid email." });
         }
 
+        const school = await School.findOne({ schoolName: req.body.schoolName })
+        if (!school) {
+            return res.status(400).json({ message: "School doesn't exist" })
+        }
+
         const checkUsername = await Driver.findOne({ userName: req.body.userName });
         if (checkUsername) {
             return res.status(409).json({ message: "userName already in use." });
@@ -52,10 +58,14 @@ exports.signUp = async (req, res) => {
                 .json({ message: "busNumber is required." });
         }
 
-        const bus = await Bus.findOne({ BusNumber: busNumber });
+        const bus = await Bus.findOne({ BusNumber: busNumber, School: school._id });
 
         if (!bus) {
             return res.status(400).json({ message: "bus does not exist." });
+        }
+
+        if (await hasDriver(bus._id)) {
+            return res.status(400).json({ message: "This bus already has a driver." });
         }
 
         const newDriver = await Driver.create({
@@ -75,6 +85,10 @@ exports.signUp = async (req, res) => {
         res.status(400).json({ message: err.message });
     }
 };
+
+async function hasDriver(busId) {
+    return (await Driver.find({ Bus: busId }).count()) != 0;
+}
 
 exports.forgotPassword = async (req, res) => {
     try {
@@ -165,7 +179,7 @@ exports.getAllStudents = async function (req, res) {
         return res.sattus(400).json({ message: "Driver userName is required" });
     }
     await driver.populate("Bus");
-    const students = await busController.GetBusStudents(driver.Bus.BusNumber);
+    const students = await busController.GetBusStudents(driver.Bus._id);
     return res.status(200).json({ message: "Got student succesfully", data: students });
 }
 
